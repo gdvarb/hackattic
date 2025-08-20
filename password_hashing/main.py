@@ -8,19 +8,20 @@ GET_URL = "https://hackattic.com/challenges/password_hashing/problem?access_toke
 response = requests.get(url=GET_URL).json() 
 print(response)
 
-salt = response["salt"]
-decoded_salt = base64.b64decode(salt)
-print(f"decoded salt: {decoded_salt}")
-combined = response["password"] + str(decoded_salt)
-print(f"combined password and decoded_salt: {combined}")
 
+# combine password and decoded salt into byte object
+encoded_password = response["password"].encode("utf-8") # encode password string into bytes
+decoded_salt = base64.b64decode(response["salt"])
+combined_bytes = encoded_password + decoded_salt
 
 # sha256
 m = hashlib.sha256()
-m.update(combined.encode("utf-8"))
-m.digest()
+m.update(combined_bytes)
 sha_res = m.hexdigest()
 print(sha_res)
+
+# hmac
+
 
 
 
