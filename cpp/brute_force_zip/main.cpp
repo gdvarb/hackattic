@@ -1,7 +1,9 @@
 #include "json.hpp"
+#include <cstdio>
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <iostream>
+#include <string.h>
 #include <zip.h>
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   size_t totalSize{size * nmemb};
@@ -55,9 +57,15 @@ int main() {
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirects
     CURLcode res2;
     res2 = curl_easy_perform(curl);
+    fclose(fp);
 
     int err{0};
     zip *z = zip_open("downloaded_file.zip", 0, &err);
+
+    // todo: need to iterate and find correct password. characters are all
+    // lowercase and numeric (4-6) ascii only
+    const char *guess = "1234";
+    zip_set_default_password(z, guess);
 
     // search for file
     const char *name{"secret.txt"};
@@ -70,7 +78,13 @@ int main() {
 
     // read compressed file
     zip_file *f = zip_fopen(z, name, 0);
-    zip_fread(f, contents, st.size);
+    long long bytes_read{zip_fread(f, contents, st.size)};
+    if (bytes_read > 0) {
+      std::cout << "success, password is: " << guess << '\n';
+    } else {
+      std::cout << "wrong password\n";
+    }
+    // zip_fread(f, contents, st.size);
     zip_fclose(f);
     zip_close(z);
   }
