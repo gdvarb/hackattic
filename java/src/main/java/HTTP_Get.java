@@ -9,6 +9,7 @@ import java.util.Scanner;
 import java.util.Timer;
 import java.time.Instant;
 import java.time.Duration;
+import java.lang.Math;
 
 class TokenResponse {
   String token;
@@ -22,17 +23,6 @@ class ChatListener implements WebSocket.Listener {
       return secretKey;
     }
     
-    public long normalizeInterval(long difference) {
-      if (difference <= 700) {
-        return 700;
-      } else if (difference > 700 && difference <= 2000) {
-        return 2000;
-      } else if (difference > 2000 && difference <= 2500) {
-        return 2500;
-      } else {
-        return 3000;
-      }
-    }
     @Override
     public void onOpen(WebSocket webSocket) {
       previousTime = Instant.now();
@@ -45,14 +35,27 @@ class ChatListener implements WebSocket.Listener {
       String differenceString;
       System.out.println("Server output: " + data);
       
-      if (data.toString().equals("good!")){
+      if (data.toString().equals("good!") || data.toString().startsWith("hello!")){
         ;
       }  
       else if (data.toString().equals("ping!")) {
+        int[] intervals = {700, 1500, 2000, 2500, 3000};
+        double minDifference = Double.POSITIVE_INFINITY;
+        int normalizedDifference = 0;
+
+
         Instant currentTime = Instant.now();
         long difference = Duration.between(previousTime, currentTime).toMillis();
         previousTime = currentTime;
-        long normalizedDifference = normalizeInterval(difference);
+
+        for (int i = 0; i < intervals.length; i++) {
+          long calculatedDifference = Math.abs(difference - intervals[i]);
+          if (calculatedDifference < minDifference) {
+            minDifference = calculatedDifference;
+            normalizedDifference = intervals[i];
+          }
+        }
+
         differenceString = String.valueOf(normalizedDifference);
         //send text back
         webSocket.sendText(differenceString, true);
@@ -69,6 +72,7 @@ class ChatListener implements WebSocket.Listener {
   }
 
 public class HTTP_Get {
+  ChatListener chat_listener = new chat_listener
   void connect_websocket(String wsToken){
       try{
         // Create client (the phone)
@@ -78,7 +82,7 @@ public class HTTP_Get {
         WebSocket ws = client.newWebSocketBuilder()
           .buildAsync(
               URI.create("wss://hackattic.com/_/ws/" + wsToken),
-              new ChatListener()
+              chat_listener
               ).join(); // join() waits for connection to actually establish
         System.out.println("Websocket connected");
       } catch (Exception e){
@@ -110,9 +114,26 @@ public class HTTP_Get {
     }
   }
 
+  String post_request() {
+    try {
+      HttpRequest request = 
+        HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString(chat_listener.getSecret()))
+            .uri(
+                URI.create(
+                  "https://hackattic.com/challenges/websocket_chit_chat/solve?access_token=840aa5334d071243"))
+            .build();
+
+    } catch (Exception e) {
+      System.out.println(e);
+      return null;
+    }
+  }
+
   public static void main(String[] args) {
     HTTP_Get obj_get_request = new HTTP_Get();
     String wsToken = obj_get_request.get_request();
+
     
     if (wsToken != null){
       obj_get_request.connect_websocket(wsToken);
